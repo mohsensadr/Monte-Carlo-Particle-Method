@@ -1,4 +1,4 @@
-# Monte Carlo solution algorithms for phase transition kinetic equation
+# Monte Carlo solution algorithms for multi-phase kinetic equation
 
 
 This C++ code produces the resutls presented in the following papers:
