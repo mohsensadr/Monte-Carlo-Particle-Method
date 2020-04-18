@@ -934,40 +934,13 @@ else
                   +dummy*dt*( (U1[ii]-  U_mean[0])*cells[num].alpha[0] + (U2[ii]- U_mean[1])*cells[num].alpha[1] + (U3[ii]- U_mean[2])*cells[num].alpha[2]
                   + cells[num].beta[0]*( energy - 3.0*(*gas).kb*cells[num].T/(*gas).m ) )
                   + dummy*cells[num].gamma_st*( (U1[ii]-  cells[num].U_space[1])*energy - cells[num].M3[0]- cells[num].M3[3]- cells[num].M3[5] )*dt;
-
             x1[ii] = x1[ii] - dummy*dt*cells[num].phi[0];
       }
       if( (*box).direction[1] == 1 ){
-/*
-	  x2[ii] =  x2[ii] + dt*U2[ii]
-                +dummy*dt*( (U1[ii]-  U_mean[0])*cells[num].alpha[3] + (U2[ii]- U_mean[1])*cells[num].alpha[4] + (U3[ii]- U_mean[2])*cells[num].alpha[5]
-			+ cells[num].beta[1]*( energy - 3.0*(*gas).kb*cells[num].T/(*gas).m ) );
-*/
-// this is the working implementation.
-	   if( (*box).problem == inverted ){
-		//if( x2[ii] >  (*box).ghost && x2[ii] < (*box).Len[1] -  (*box).ghost ){
-		//if(cells[num].cell_center[1]> (*box).ghost && cells[num].cell_center[1] < (*box).Len[1]-(*box).ghost){
-           		//x2[ii] =  x2[ii] + dt*U2[ii]
-                	//	+dummy*dt*( (U1[ii]-  U_mean[0])*cells[num].alpha[3] + (U2[ii]- U_mean[1])*cells[num].alpha[4] + (U3[ii]- U_mean[2])*cells[num].alpha[5]
-			//		+ cells[num].beta[1]*( energy - 3.0*(*gas).kb*cells[num].T/(*gas).m ) );
-			//x2[ii] =  x2[ii] + dt*U2[ii];
-
-			//if( x2[ii] >  2.0*(*gas).sigma && x2[ii] < (*box).Len[1] -  2.0*(*gas).sigma ){
 				x2[ii] =  x2[ii] +dummy*dt*( (U1[ii]-  U_mean[0])*cells[num].alpha[3] + (U2[ii]- U_mean[1])*cells[num].alpha[4] + (U3[ii]- U_mean[2])*cells[num].alpha[5]
-					+ cells[num].beta[1]*( energy - 3.0*(*gas).kb*cells[num].T/(*gas).m ) );
-		    		+ dummy*cells[num].gamma_st*( (U2[ii]-  cells[num].U_space[1])*energy - cells[num].M3[1]- cells[num].M3[6]- cells[num].M3[8] )*dt;
+									+ cells[num].beta[1]*( energy - 3.0*(*gas).kb*cells[num].T/(*gas).m ) )
+		    					+ dummy*cells[num].gamma_st*( (U2[ii]-  cells[num].U_space[1])*energy - cells[num].M3[1]- cells[num].M3[6]- cells[num].M3[8] )*dt;
 				x2[ii] = x2[ii] - dummy*dt*cells[num].phi[1];
-			//}
-
-		//}
-	   }
-	   else{
-		x2[ii] =  x2[ii] +dummy*dt*( (U1[ii]-  U_mean[0])*cells[num].alpha[3] + (U2[ii]- U_mean[1])*cells[num].alpha[4] + (U3[ii]- U_mean[2])*cells[num].alpha[5]
-			+ cells[num].beta[1]*( energy - 3.0*(*gas).kb*cells[num].T/(*gas).m ) )
-		    	+ dummy*cells[num].gamma_st*( (U2[ii]-  cells[num].U_space[1])*energy - cells[num].M3[1]- cells[num].M3[6]- cells[num].M3[8] )*dt;
-		x2[ii] = x2[ii] - dummy*dt*cells[num].phi[1];
-	   }
-
       }
    }
 }

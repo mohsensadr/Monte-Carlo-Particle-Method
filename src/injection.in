@@ -1,0 +1,49 @@
+phi 4.15
+output injection_ESMC_4.15
+drop_dia 20.0
+long_range 1
+direction 1 1 0
+kb 1.38064852e-23
+T 100.0
+nc 0.1
+nh 1.0
+Tc 100.0
+Th 100.0
+box_len  40.0 40.0  1.0 
+#box_len 2936857562.41 2936857562.41 1.0
+N 500
+sigma 3.405e-10
+mass 6.6335214e-26
+steps 100000000
+U0 0.0 0.0 0.0
+### collision model : CBA_HS or DSMC
+#model DSMC_VHS
+#model SPH
+#model FP_ideal_gas
+#model FP_dense
+model ESMC
+#model CBA_VHS
+#model FP_linear
+#model none
+num_realizations 1
+#movie 100
+#after 500
+after 9
+num_cells 40 40 1
+num_thr 1
+every 10
+reset_every 1
+problem 12 ##1 closed box, 2: couette flow
+U_wall_1  0.0
+U_wall_2  0.0
+U_wall_3  0.0
+U_wall_4  0.0
+T_wall_1  100.0
+T_wall_2  100.0
+T_wall_3  100.0
+T_wall_4  100.0
+mu 2.117e-5
+frac_mft 0.01
+visp 0.5
+nualpha 1.4
+

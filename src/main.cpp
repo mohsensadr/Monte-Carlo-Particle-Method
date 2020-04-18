@@ -374,6 +374,9 @@ write_post_processing(step, cells,  &box, &done, &gas, U1, U2, U3, x1, x2, flag,
 
 step = 1;
 box.step = step;
+//printf("error of pardiso is %d\n", solver_pardiso());
+
+//poisson_solver( U2, x1, x2, x3, &gas, &box, cells, index);
 
 double *x1n, *x2n, *U1n, *U2n, *U3n, *x1_oldn, *x2_oldn, *dtn;
 int *flagn, *indexn;
@@ -423,7 +426,7 @@ while(t<total_time){
   }
   write_post_processing(step, cells,  &box, &done, &gas, U1, U2, U3, x1, x2, flag, index, color,  n_ratio, x2_old);
 
-  if ( (box.problem == evaporation || box.problem == vacuum  || box.problem == inverted) && box.step%box.reset_every == 0){
+  if ( (box.problem == evaporation || box.problem == vacuum  || box.problem == inverted || box.problem == injection) && box.step%box.reset_every == 0){
     //if (step % 100 == 0 && step > 10){
     //  reset_inverted_addremove_particles(&U1, &U2, &U3, &x1, &x1_old,&x2, &x2_old, &gas, &box, cells, &index, &flag,&n_ratio, &xi_1, &xi_2, &xi_3, &xi_1f, &xi_2f, &xi_3f, &Mp1, &Mp2, &Mp3, &color);
     //}

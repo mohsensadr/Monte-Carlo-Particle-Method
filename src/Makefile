@@ -17,15 +17,15 @@ LIBS = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/l
 #LIBS = -I${MKLROOT}/include -lmkl_core  -liomp5 -lpthread -lm -ldl
 endif
 ifeq ($(UNAME), Darwin)
-LIBS = -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+LIBS = -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 CC2 = icc -openmp
 endif
 
 
-#LIBS = -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+#LIBS = -L${MKLROOT}/lib/intel64_lin/  -Wl,-rpath,${MKLROOT}/lib/intel64_lin/ -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -lpthread -liomp5
 #CC2 = icc -openmp
 
-CFLAGS2 = -O3  -std=c++11# -I${MKLROOT}/include
+CFLAGS2 =   -std=c++11 -O3# -I${MKLROOT}/include
 # CFLAGS2 = -g  -std=c++11
 
 #LDFLAGS = -L${MKLROOT}/lib/intel64  -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -ldl -lpthread -lm -fopenmp -llapack -lblas
@@ -50,6 +50,7 @@ HEADERS = $(wildcard *.h)
 
 %.o: %.cpp $(HEADERS)
 	$(CC2) $(CFLAGS2)  -c $< -o $@
+
 
 .PRECIOUS: $(TARGET) $(OBJECTS2)
 

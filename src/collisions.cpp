@@ -662,17 +662,11 @@ for(m=0; m<M_cand; m++){
 		x[1] = x2[i] + (*gas).sigma*dir[1];
 		for(ii=0; ii<2; ii++)
 			ind[ii] = floor(x[ii]/(*box).delta_dim[ii]);
-		J =  ind[1];
-
-		if(J<0)
-			J = 0;
-		else if(J>(*box).N[1]-1)
-			J = (*box).N[1]-1;
-
-
+		//J =  ind[1];
+    J = ind[1]*(*box).N[0] + ind[0];
 
 		next = 0;
-		if(J>=0 && J<(*box).N[1] )
+		if(ind[0]>=0 && ind[0]<(*box).N[0] &&  ind[1]>=0 && ind[1]<(*box).N[1])
 			if( cells[J].num_inside>0 )
 				next = 1;
 
@@ -691,7 +685,7 @@ for(m=0; m<M_cand; m++){
 
 				  for(ii=0; ii<2; ii++)
 					     ind_mid[ii] = floor(x_mid[ii]/(*box).delta_dim[ii]);
-				  IJmid =  ind_mid[1];//*(*box).N[0] + ind_mid[0];
+				  IJmid =  ind_mid[1]*(*box).N[0] + ind_mid[0];
 				  Ymid = increase_collision_rate(cells[IJmid].n, gas);
 
 				  g[0] = U1[i] - U1[j];

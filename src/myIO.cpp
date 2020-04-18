@@ -1019,6 +1019,7 @@ start = omp_get_wtime();
 
            /////////////////////////////////////////////////////////////////////////////////
            //##########################       Sample pressure     ##########################
+           /*
            /////////////////////////////////////////////////////////////////////////////////
            if ( (*box).step > (*gas).times*(*box).after && (*box).problem != dcones && (*box).problem != flatnose){
            	for( i=0; i<6; i++){
@@ -1031,6 +1032,7 @@ start = omp_get_wtime();
                 	printf("p = %e\n", (*gas).p);
              	}
            }
+           */
 
 
          //writting_position_to_file(x1, x2, x3, gas.N, &t, 1, step);
@@ -1441,7 +1443,15 @@ else{
     for (k=0; k < (*Box).N[1]; k++)
       for (j=0; j < (*Box).N[0]; j++){
 
+
 	    num = l*(*Box).N[0]*(*Box).N[1] + k*(*Box).N[0] + j;
+      cells[num].id[0] = k*((*Box).N[0]+1) + j;
+      cells[num].id[1] = k*((*Box).N[0]+1) + j + 1;
+      cells[num].id[2] = (k+1)*((*Box).N[0]+1) + j;
+      cells[num].id[3] = (k+1)*((*Box).N[0]+1) + j + 1;
+
+
+
 	    cells[num].in = 1;
             cells[ num ].dim[0] = (double)(j)  *(*Box).delta_dim[0];
 	    cells[ num ].dim[1] = (double)(j+1)*(*Box).delta_dim[0];
@@ -1455,6 +1465,18 @@ else{
           cells[num].cell_center[0] = 0.5*(cells[num].dim[0]+cells[num].dim[1]);
           cells[num].cell_center[1] = 0.5*(cells[num].dim[2]+cells[num].dim[3]);
           cells[num].cell_center[2] = 0.5*(cells[num].dim[4]+cells[num].dim[5]);
+          cells[num].n_n[0] = 0.0;
+          cells[num].n_n[1] = 0.0;
+          cells[num].n_n[2] = 0.0;
+          cells[num].n_n[3] = 0.0;
+          cells[num].x_n[0] = cells[num].cell_center[0]-cells[num].dx/2.0;
+          cells[num].x_n[1] = cells[num].cell_center[0]+cells[num].dx/2.0;
+          cells[num].x_n[2] = cells[num].cell_center[0]-cells[num].dx/2.0;
+          cells[num].x_n[3] = cells[num].cell_center[0]+cells[num].dx/2.0;
+          cells[num].y_n[0] = cells[num].cell_center[1]-cells[num].dy/2.0;
+          cells[num].y_n[1] = cells[num].cell_center[1]-cells[num].dy/2.0;
+          cells[num].y_n[2] = cells[num].cell_center[1]+cells[num].dy/2.0;
+          cells[num].y_n[3] = cells[num].cell_center[1]+cells[num].dy/2.0;
 	   double a = 0.0;
 
 	int sg1, sg3;
@@ -2090,6 +2112,9 @@ for(int i=0;i<4;i++){
 	        iss >> (*box).n_wall_7;
 	   else if(dummyString == "reset")
 	        iss >> (*box).reset;
+    else if(dummyString == "drop_dia")
+               iss >> (*box).drop_dia;
+
 	    else if(dummyString == "num_cells"){
 		iss >>  (*box).N[0];
 		iss >>  (*box).N[1];
@@ -2636,8 +2661,9 @@ else if ( (*box).problem == evaporation || (*box).problem == wall){
 	if( (*gas).n_ratio < 0 )
 		(*gas).n_ratio = floor( (*gas).nc/(*gas).nv2 );
 
-	(*gas).Fn = (*gas).nv2*(*box).Len[0]*(*box).Len[2]*(*gas).Lv/( 1.0*(*gas).Nv2 );
-
+	//(*gas).Fn = (*gas).nv2*(*box).Len[0]*(*box).Len[2]*(*gas).Lv/( 1.0*(*gas).Nv2 );
+  // here, we fixed the FN
+  (*gas).Fn = 0.1e+14;
 	int sg1;
 	if((*gas).LvN1>0)
 		sg1 = 1;
@@ -2662,6 +2688,7 @@ else if ( (*box).problem == evaporation || (*box).problem == wall){
 	(*gas).Nv3 = 0;
 
 	(*gas).Nv1 = floor( (*gas).nv1*(*box).Len[0]*(*box).Len[2]*(*gas).Lv1/(*gas).Fn );
+  (*gas).Nv2 = floor( (*gas).nv2*(*box).Len[0]*(*box).Len[2]*(*gas).Lv/(*gas).Fn );
 	if((*gas).Lv1 > 0.0)
 		(*gas).nv1 = (*gas).Nv1*(*gas).Fn/( (*box).Len[0]*(*box).Len[2]*(*gas).Lv1 );
 
@@ -2699,6 +2726,40 @@ else if ( (*box).problem == evaporation || (*box).problem == wall){
 
   }
 }
+else if ( (*box).problem == injection){
+	//double sc = 1e-10;
+	//double gcm3tom3 = 1e3/((*gas).m);
+	(*gas).sigma = 3.405e-10;
+	(*gas).eqdist = (*gas).sigma;
+
+	printf("\n\n   :::   Initial setting   :::\n");
+	printf("   nc,Tc (state of chamber) (%e,%e)\n   nh,Th (state of injected liquid) (%e,%e)\n\n", (*gas).nc, (*gas).Tc, (*gas).nh, (*gas).Th);
+
+	(*gas).nc = (*gas).nc/pow((*gas).sigma, 3.0);
+	(*gas).nh =  (*gas).nh/pow((*gas).sigma, 3.0);
+  (*gas).N = (*gas).N*(*box).N[0]*(*box).N[1];
+  (*box).Len[0] = (*box).Len[0]*(*gas).sigma;
+  (*box).Len[1] = (*box).Len[1]*(*gas).sigma;
+  (*gas).T = (*gas).Tc;
+  (*gas).n = (*gas).nc;
+  (*gas).Fn = (*gas).n*(*box).Len[0]*(*box).Len[1]*(*box).Len[2]/( 1.0*(*gas).N );
+
+  (*box).drop_dia = (*box).drop_dia*(*gas).sigma;
+  (*gas).Nh = floor(((*gas).nh-(*gas).nc)*pi*(*box).drop_dia*(*box).drop_dia/4.0/(*gas).Fn);
+  (*gas).N = (*gas).N + (*gas).Nh;
+  printf("Nh=%d   N=%ld\n", (*gas).Nh, (*gas).N - (*gas).Nh);
+
+  (*box).Volume = (*box).Len[0]*(*box).Len[1]*(*box).Len[2];
+  (*box).Area[0] = (*box).Len[1]*(*box).Len[2];
+  (*box).Area[1] = (*box).Len[1]*(*box).Len[2];
+  (*box).Area[2] = (*box).Len[0]*(*box).Len[2];
+  (*box).Area[3] = (*box).Len[0]*(*box).Len[2];
+  (*box).Area[4] = (*box).Len[0]*(*box).Len[1];
+  (*box).Area[5] = (*box).Len[0]*(*box).Len[1];
+  (*box).delta_dim[0] = (*box).Len[0]/(*box).N[0];
+  (*box).delta_dim[1] = (*box).Len[1]/(*box).N[1];
+  (*box).delta_dim[2] = (*box).Len[2]/(*box).N[2];
+  }
   else if ( (*box).problem == shock){
   	//double sc = 1e-10;
   	//double gcm3tom3 = 1e3/((*gas).m);
@@ -2852,10 +2913,10 @@ else if((*box).problem == flatnose)
 //    (*gas).phi = 2.23770358e-21;
 // new
    if( (*gas).phi<0.0 ){
-      (*gas).phi = 4.0*(*gas).epsilon;//2.2711776e-21
+      (*gas).phi = -4.0*(*gas).epsilon;//2.2711776e-21
     }
    else{
-     (*gas).phi = (*gas).phi*(*gas).epsilon;
+     (*gas).phi = -(*gas).phi*(*gas).epsilon;
    }
     if( (*box).ghost < 0.0 )
 	(*box).ghost = 0.0;
@@ -2941,7 +3002,7 @@ printf("thermh/sigma = %lf\n", (*box).thermh/(*gas).sigma);
 printf(" (*box).ghost = %e\n", (*box).ghost );
 
 printf(" (*gas).ast = %e,   (*gas).bst = %e\n", (*gas).ast, (*gas).bst );
-
+printf(" (*gas).phi/epsilon = %e\n", (*gas).phi/(*gas).epsilon );
 
 
     (*gas).U[0] = (*gas).U0[0];

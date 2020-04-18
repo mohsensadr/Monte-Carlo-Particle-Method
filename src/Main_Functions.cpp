@@ -1482,6 +1482,9 @@ void apply_BC(double *U1,double *U2,double *U3,double *x1,double *x2, double *x3
 			BC_wall(U1, U2, U3, x2, gas, box, index, cells, flag, x2_old);
 
 		}
+		else if((*box).problem == injection){
+			BC_specular_reflection(U1, U2, U3, x1, x2,x3, gas, box);
+		}
 	  end = omp_get_wtime();
 	  if ( (*box).step % (*box).every == 0)
 		printf("BC took %e s\n", end - start);
@@ -1615,8 +1618,14 @@ void velocity_update(double *U1,double *U2,double *U3,double *x1,double *x2, dou
 	if((*gas).long_range == 1){
 		if((*box).problem == dcones)
 			dcones_vlasov_integral(U1, U2, gas, box, cells, index);
-		else
-			vlasov_taking_the_integral(U2, gas, box, cells, index, x1, x2, x3);
+		else{
+			if((*box).problem == injection){
+				compute_Vlasov_2D(gas, box, cells,x1,x2,U1,U2,index);
+			}
+			else{
+				vlasov_taking_the_integral(U2, gas, box, cells, index, x1, x2, x3);
+		  }
+		}
 		if ((*box).step % (*box).every == 0)
 			std::cout << "attraction with direct method!\n";
 	}
@@ -1643,10 +1652,15 @@ void velocity_update(double *U1,double *U2,double *U3,double *x1,double *x2, dou
 	   		std::cout << "attraction with density expansion!\n";
 		}
 		else if((*gas).long_range == 3){
-			poisson_solver( U2, x1, x2, x3, gas, box, cells, index);
+			if((*box).problem == injection){
+				compute_SP_2D(gas, box, cells,x1,x2,U1,U2,index);
+			}
+			else{
+				poisson_solver( U2, x1, x2, x3, gas, box, cells, index);
+			}
 		if ((*box).step % (*box).every == 0)
-			std::cout << "attraction with screened-Poisson!\n";
-	}
+				std::cout << "attraction with screened-Poisson!\n";
+		}
 	else{
 
 		if( (*box).step % (*box).every == 0)
@@ -1662,7 +1676,20 @@ void thermostat(double *U1,double *U2,double *U3, double *x2, struct GAS *gas, s
   double lamb;
   double therm_len = 4.0*(*gas).sigma;
   //double therm_len = 1.2*(*gas).Lc;
-  if ( (*box).problem == vacuum){
+	if((*box).problem == injection){
+		/*
+		for(i=0; i<(*gas).N; i++){
+				num = index[i];
+				if(cells[num].T > 0.0){
+					lamb = sqrt((*gas).T/cells[num].T);
+					U1[i] = U1[i]*lamb;
+					U2[i] = U2[i]*lamb;
+					U3[i] = U3[i]*lamb;
+			}
+		}
+		*/
+	}
+  else if ( (*box).problem == vacuum){
 		/*
 	for(i=0; i<(*gas).N; i++){
 		if( x2[i]>(*box).Len[1]/2.0 - 2.0*(*gas).sigma && x2[i]<(*box).Len[1]/2.0 + 2.0*(*gas).sigma ){
@@ -2115,7 +2142,7 @@ void cell_update(double *x1,double *x2, double *U1,double *U2,double *U3, struct
   std::uniform_real_distribution<> dis_r(0.0, 1.0);
   int id;
   double vol;
-  int num, i, j, k;
+  int num, i, j, k, num2, kk,jj;
   //double   *E_kin;
   double energy;
   //E_kin = (double *) malloc(  (*box).N[2]*(*box).N[1]*(*box).N[0]* sizeof(double) );
@@ -2150,6 +2177,9 @@ else
   for (num=0; num < Ncells; num++){
 		cells[num].num_inside = 0;
 		numbering[num] = 0;
+		for(i=0; i<4; i++){
+			cells[num].n_n[i] = 0.0;
+		}
   }
 
   if((*box).problem == dcones){
@@ -2234,8 +2264,105 @@ else
     		num =  k*(*box).N[0] + j;
     		index[i] = num;
 		cells[num].num_inside = cells[num].num_inside+1;
+
+		if(x1[i]<cells[num].cell_center[0]){
+			if(x2[i]<cells[num].cell_center[1]){
+				cells[num].n_n[0] += (*gas).Fn/cells[num].volume;
+				kk = k; jj = j-1;
+				if(jj>=0){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[1] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k-1; jj = j;
+				if(kk>=0){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[2] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k-1; jj = j-1;
+				if(kk>=0 && jj>=0){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[3] += (*gas).Fn/cells[num2].volume;
+				}
+			}
+			else{
+				cells[num].n_n[2] += (*gas).Fn/cells[num].volume;
+				kk = k; jj = j-1;
+				if(jj>=0){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[3] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k+1; jj = j;
+				if(kk<=(*box).N[1]-1){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[0] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k+1; jj = j-1;
+				if(kk<=(*box).N[1]-1 && jj>=0){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[1] += (*gas).Fn/cells[num2].volume;
+				}
+			}
+		}
+		else{
+			if(x2[i]<cells[num].cell_center[1]){
+				cells[num].n_n[1] += (*gas).Fn/cells[num].volume;
+				kk = k; jj = j+1;
+				if(jj<=(*box).N[0]-1){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[0] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k-1; jj = j;
+				if(kk>=0){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[3] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k-1; jj = j+1;
+				if(kk>=0 && jj<=(*box).N[0]-1){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[2] += (*gas).Fn/cells[num2].volume;
+				}
+			}
+			else{
+				cells[num].n_n[3] += (*gas).Fn/cells[num].volume;
+				kk = k; jj = j+1;
+				if(jj<=(*box).N[0]-1){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[2] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k+1; jj = j;
+				if(kk<=(*box).N[1]-1){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[1] += (*gas).Fn/cells[num2].volume;
+				}
+				kk = k+1; jj = j+1;
+				if(kk<=(*box).N[1]-1 && jj<=(*box).N[0]-1){
+					num2 =  kk*(*box).N[0] + jj;
+					cells[num2].n_n[0] += (*gas).Fn/cells[num2].volume;
+				}
+			}
+			}
+		}
+		for(jj=0; jj<(*box).N[0]; jj++){
+			num2 =  0*(*box).N[0] + jj;
+			cells[num2].n_n[0] = cells[num2].n_n[0]*2.0;
+			cells[num2].n_n[1] = cells[num2].n_n[1]*2.0;
+		}
+		for(jj=0; jj<(*box).N[0]; jj++){
+			num2 =  ((*box).N[1]-1)*(*box).N[0] + jj;
+			cells[num2].n_n[2] = cells[num2].n_n[2]*2.0;
+			cells[num2].n_n[3] = cells[num2].n_n[3]*2.0;
+		}
+		for(kk=0; kk<(*box).N[1]; kk++){
+			num2 = kk*(*box).N[0] + 0;
+			cells[num2].n_n[0] = cells[num2].n_n[0]*2.0;
+			cells[num2].n_n[2] = cells[num2].n_n[2]*2.0;
+		}
+		for(kk=0; kk<(*box).N[1]; kk++){
+			num2 = kk*(*box).N[0] + (*box).N[0]-1;
+			cells[num2].n_n[1] = cells[num2].n_n[1]*2.0;
+			cells[num2].n_n[3] = cells[num2].n_n[3]*2.0;
+		}
   	}
-   }
 
    for (num=0; num<Ncells; num++){
 	  free(cells[num].indices_inside);
@@ -2251,7 +2378,7 @@ else
   double h,r_cut, mb;
 	r_cut = 2.0*(*box).delta_dim[1];
 	h = r_cut/4.0;
-  int search, num2, kk, kkk;
+  int search, kkk;
   double r1, r2, rr, sqrt_pi;
   double r1r2;
   double W;
@@ -2464,6 +2591,12 @@ else
 	    cells[num].gamma_st =  -0.001*( cells[num].n*(*gas).b*Y/( (*gas).kb*cells[num].T/(*gas).m ) );
     }
   }
+//	 (*gas).n = 100;
+	//for(num=0; num<Ncells; num++){
+	//	cells[num].n = (*gas).n;
+	//	for(i=0; i<4; i++)
+	//		cells[num].n_n[i] = (*gas).n;
+	//}
 
 	if( (*gas).model == "SPH" || (*gas).model =="SPH_DSMC" ){
 		//(*gas).N_SPH = 0;
@@ -3336,6 +3469,11 @@ b[nf-2]    = -1.0;
 	//}
 	Thompson_3d(a, b, c, x, rhs, nf);
 
+	printf("1D:\n");
+  for(i=0; i<nf; i++){
+ 		printf("x[%d]=%e\n", i,x[i]);
+   }
+
 	/*
 	FILE *fp;
 	fp = fopen("sol_poisson.txt", "w");
@@ -3408,7 +3546,7 @@ b[nf-2]    = -1.0;
 // storing potential of the left face for each cell, postproc purposes
 for(num = 0; num<(*box).N[1]; num++){
 	 cells[num].UU = x[num];///(*gas).m*(*gas).ast;
-	 cells[num].UU0 = xx[num];///(*gas).m*(*gas).ast;
+	 cells[num].UU0 = nj[num];//xx[num];///(*gas).m*(*gas).ast;
 
 	 //cells[num].UUR = x[num+1]/(*gas).m*(*gas).ast;
 	 cells[num].UU0R = xx[num+1]/(*gas).m*(*gas).ast;
@@ -3418,6 +3556,7 @@ for(num = 0; num<(*box).N[1]; num++){
  for(i=0; i<nf; i++){
 		x[i] = x[i] - xx[i];
   }
+
 
 // test
 /*
@@ -4498,16 +4637,33 @@ else{
 					}
 			}
 		}
+		else if((*box).problem == injection){
+			double r, theta;
+				for ( i = 0; i < (*gas).N; ++i){
+					if(i<(*gas).N-(*gas).Nh){
+									x1[i] =  dis_x(gen)*(*box).Len[0];
+									x2[i] =  dis_x(gen)*(*box).Len[1];
+					}
+					else{
+									//printf("here");
+									r = ((*box).drop_dia/2.0) * sqrt(dis_x(gen));
+									theta = dis_x(gen) * 2.0 * acos(-1.0);
+									x1[i] = 0.5*(*box).Len[0] + r * cos(theta);
+									x2[i] = 0.5*(*box).Len[1] + r * sin(theta);
+					}
+					x3[i] =  0.5*(*box).Len[2];
+				}
+		}
  	 	else{
-    			for ( i = 0; i < (*gas).N; ++i){
+    		for ( i = 0; i < (*gas).N; ++i){
 	   			if( (*box).direction[0] == 1)
 	           			x1[i] =  dis_x(gen)*(*box).Len[0];
-				else
-					x1[i] =  0.5*(*box).Len[0];
-	   			if( (*box).direction[1] == 1)
+					else
+									x1[i] =  0.5*(*box).Len[0];
+	   	 		if( (*box).direction[1] == 1)
 	           			x2[i] =  dis_x(gen)*(*box).Len[1];
-				else
-					x2[i] =  0.5*(*box).Len[1];
+					else
+						x2[i] =  0.5*(*box).Len[1];
 	   			if( (*box).direction[2] == 1)
 	           			x3[i] =  dis_x(gen)*(*box).Len[2];
 				else

@@ -3,6 +3,12 @@
 #include <omp.h>
 #include "omp.h"
 
+#include <mkl.h>
+#include <mkl_cblas.h>
+#include <mkl_blas.h>
+#include <mkl_lapack.h>
+#include <mkl_lapacke.h>
+
 //# include "ziggurat.h"
 
 #include <math.h>
@@ -28,6 +34,7 @@
 #define zoomed_inverted 9
 #define shock 10
 #define wall 11
+#define injection 12
 
 #define sph 1
 #define sph_to_dsmc 2
@@ -38,6 +45,7 @@
 #define GP 0
 #define net 1
 
+/*
 #if defined(_WIN32) || defined(_WIN64)
 #define pardiso_ PARDISO
 #else
@@ -48,7 +56,7 @@
 #else
 #define MKL_INT int
 #endif
-
+*/
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,21 +65,26 @@ void dgesv(const int *, const int *, double *, const int *, int *, double *, con
 
 void dsgesv(const int *, const int *, double *, const int *, int *, const double *, const int *, double *, const int *, double *, float *, int *, int *);
 
+/*
 extern MKL_INT PARDISO
 	(void *, MKL_INT *, MKL_INT *, MKL_INT *, MKL_INT *, MKL_INT *,
 	double *, MKL_INT *, MKL_INT *, MKL_INT *, MKL_INT *, MKL_INT *,
 	MKL_INT *, double *, double *, MKL_INT *);
-
+*/
 int solving_phi(int *ia, int *ja, double *a, int n, double *b, double *x, int ) ;
 
 /* PARDISO prototype. */
-void pardisoinit (void   *, int    *,   int *, int *, double *, int *);
+/*
+//void pardisoinit (void   *, int    *,   int *, int *, double *, int *);
+void pardisoinit (void *pt, MKL_INT *mtype, MKL_INT *iparm );
+
 void pardiso     (void   *, int    *,   int *, int *,    int *, int *,
                   double *, int    *,    int *, int *,   int *, int *,
                      int *, double *, double *, int *, double *);
 void pardiso_chkmatrix  (int *, int *, double *, int *, int *, int *);
 void pardiso_chkvec     (int *, int *, double *, int *);
 void pardiso_printstats (int *, int *, double *, int *, int *, int *, double *, int *);
+*/
 
 uint32_t cong_seeded ( uint32_t *jcong );
 double cpu_time ( );
@@ -192,6 +205,7 @@ struct GAS
 
 struct BOX
 {
+  double drop_dia;
   double x2_prob[4];
   double ghost,thermc, thermh;
   double JR[4], JL[4], Jref[4];
@@ -264,6 +278,9 @@ struct CELLS
   int *id_split_part;
   int n_ratio;
   int id[4];
+  double n_n[4];
+  double x_n[4];
+  double y_n[4];
   int in;// if inside then in = 1
   int ng[2];
   double V[4];// potential on the faces
@@ -339,6 +356,9 @@ double  d[3], norm_post_pre;
 double cos_teta,sin_teta, q;
 double crm;
 };
+
+int solver_pardiso(int *ia, int *ja, double *a, int n, double *b, double *x);
+
 void random_generator(double *xi_1, double *xi_2, double *xi_3, double *xi_1f, double *xi_2f, double *xi_3f, struct CELLS *cells, struct BOX *box,  struct GAS *gas, int *index);
 
 void Collision_ESMC_new4(double *U1,double *U2,double *U3,double *x1,double *x2, struct GAS *gas, struct BOX *box, struct CELLS *cells, int *index);
@@ -367,6 +387,7 @@ void MD_8th(double *U1, double *U2, double *U3, double *x1, double *x2, double *
 
 void measure_pressure(double *U2,double *x2, double *x2_old, struct GAS *gas, struct BOX *box, struct CELLS *cells);
 
+void compute_Vlasov_2D(struct GAS *gas, struct BOX *box, struct CELLS *cells, double *x1, double *x2, double *U1, double *U2, int *index);
 void shock_BC(double *U2, double *x2, double *T, struct GAS *gas, struct BOX *box, struct CELLS *cells);
 void compute_evap_coeff(double *U2,double *x2,double *x2_old,struct GAS *gas, struct BOX *box, int *color,int *n_ratio);
 void compute_evap_coeff_evaporation(double *U2,double *x2,double *x2_old,struct GAS *gas, struct BOX *box, int *color,int *n_ratio,  struct CELLS *cells);
@@ -374,6 +395,7 @@ void ghost_inverted_addremove_particles(double **U1,double **U2,double **U3,doub
 
 void read_GPR(struct GPR *gpr);
 
+void compute_SP_2D(struct GAS *gas, struct BOX *box, struct CELLS *cells, double *x1, double *x2, double *U1, double *U2, int *index);
 void write_post_processing(int step, struct CELLS *cells,  struct BOX *box, int *done, struct GAS *gas, double *U1, double *U2, double *U3, double *x1, double *x2, int *flag, int *index, int *color, int*n_ratio,double *x2_old);
 
 void evaluation_GPR(struct GPR *gpr, double x, double *y);
@@ -391,6 +413,8 @@ void cell_update_hybrid(double *x1,double *x2, double *U1,double *U2,double *U3,
 void add_remove_hybrid(double **U1,double **U2,double **U3,double **x1,double **x1_old,double **x2,double **x2_old,struct GAS *gas, struct BOX *box, struct CELLS *cells, int **index, int **flag,  int **n_ratio, double **xi_1, double **xi_2, double **xi_3, double **xi_1f, double **xi_2f, double **xi_3f, double **Mp1, double **Mp2, double **Mp3, int **color,  double ** T, double ** rho, struct NerualNetwork *NN, struct GPR *gpr);
 
 void fix_mean(double *U_temp, int N);
+
+int solver_pardiso();
 
 void SPH_simple(double *x2, double *U2, double *rho, double *T, struct GAS *gas, struct BOX *box, struct CELLS *cells, int *index);
 double compute_DKL_MED_MW(double *lambda);
