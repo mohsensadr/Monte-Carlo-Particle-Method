@@ -7,3 +7,5 @@ This C++ code produces the resutls presented in the following papers:
 2. Sadr, M., and M. H. Gorji. "Treatment of long-range interactions arising in the Enskog–Vlasov description of dense fluids." Journal of Computational Physics 378 (2019): 129-142.
 
 ![Demo](n_validation.gif)
+
+![Demo](T_validation.gif)
